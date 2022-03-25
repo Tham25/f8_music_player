@@ -22,11 +22,17 @@ const cd = $('.cd');
 const playBtn = $('.btn-toggle-play');
 const player = $('.player');
 const progress = $('#progress');
+const nextBtn = $('.btn-next');
+const prevBtn = $('.btn-prev');
+const repeatBtn = $('.btn-repeat');
+const randomBtn = $('.btn-random');
 
 
 const app = {
     currentIndex: 0,
     isPlaying: false,
+    isRandom: false,
+    isRepeat: false,
     songs: [
         {
             name: 'Ah Yeah',
@@ -125,8 +131,9 @@ const app = {
             {transform: 'rotate(360deg)'}
         ], {
             duration: 10000, //10s
-            interations: Infinity
+            iterations: Infinity
         });
+        cdThumbAnimate.pause();
 
         //Xu ly phong to/thu nho CD
         document.onscroll = function() {
@@ -149,19 +156,21 @@ const app = {
         audio.onplay = function() {
             _this.isPlaying = true;
             player.classList.add('playing');
+            cdThumbAnimate.play();
         }
 
         //khi song pause
         audio.onpause = function() {
             _this.isPlaying = false;
             player.classList.remove('playing');
+            cdThumbAnimate.pause();
         }
 
 
         //khi thoi gian phat cua song thay doi
         audio.ontimeupdate = function() {
             if (audio.duration) {
-                const progressPercent = Math.floor(audio.currentTime/audio.duration*100);
+                const progressPercent = Math.round(audio.currentTime/audio.duration*10000)/100;
                 progress.value = progressPercent;
             }
         }
@@ -172,11 +181,42 @@ const app = {
             const seekTime = e.target.value/100*audio.duration;
             audio.currentTime = seekTime;
         }
+
+        //khi next bai hat
+        nextBtn.onclick = function() {
+            _this.nextSong();          
+        }
+
+        //khi prev bai
+        prevBtn.onclick = function() {
+            _this.prevSong();
+        }
+
+        //khi bam random bai hat
+        randomBtn.onclick = function() {
+            _this.isRandom = ! _this.isRandom;
+            randomBtn.classList.toggle('active', _this.isRandom);
+        }
     },
     loadCurrentSong: function() {
         heading.textContent = this.currentSong.name;
         cdThumb.style.backgroundImage = `url('${this.currentSong.image}')`;
         audio.src = this.currentSong.path;
+    },
+    nextSong: function() {
+        this.currentIndex = this.currentIndex < (this.songs.length - 1) ? this.currentIndex + 1 : 0;
+        this.loadCurrentSong();
+    },
+    prevSong: function() {
+        this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : (this.songs.length -1);
+        this.loadCurrentSong();
+    },
+    randomSong: function() {
+        let newIndex;
+        do{
+            newIndex = Math.floor(Math.random()*this.songs.length);
+        } while(newCurrentIndex === this.currentIndex)
+        this.currentIndex = newIndex;
     },
     start: function() {
         //dinh nghia cac thuoc tinh cho object
