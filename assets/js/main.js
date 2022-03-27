@@ -7,7 +7,7 @@
  * 6. Random
  * 7. Next/repeat when ended
  * 8. Active song
- * 9. Scroll active song into view
+ * 9. Scroll active song into view - keo bai hat dang phat len tren dau
  * 10. Play song when click
  */
 
@@ -33,6 +33,7 @@ const app = {
     isPlaying: false,
     isRandom: false,
     isRepeat: false,
+    arrayRandom: [],
     songs: [
         {
             name: 'Ah Yeah',
@@ -96,9 +97,9 @@ const app = {
         }
     ],
     render: function() {
-        const htmls = this.songs.map(song => {
+        const htmls = this.songs.map((song, index) => {
             return `
-            <div class="song">
+            <div class="song song-${index} ${index === this.currentIndex ? 'active':''}">
                 <div class="thumb"
                     style="background-image: url('${song.image}')">
                 </div>
@@ -115,7 +116,7 @@ const app = {
 
         $('.playlist').innerHTML = htmls.join('');
     },
-    definePropertis: function() {
+    defineProperties: function() {
         Object.defineProperty(this,'currentSong', {
             get: function() {
                 return this.songs[this.currentIndex];
@@ -166,7 +167,6 @@ const app = {
             cdThumbAnimate.pause();
         }
 
-
         //khi thoi gian phat cua song thay doi
         audio.ontimeupdate = function() {
             if (audio.duration) {
@@ -184,18 +184,36 @@ const app = {
 
         //khi next bai hat
         nextBtn.onclick = function() {
-            _this.nextSong();          
+            _this.nextSong();
+            _this.scrollToActiveSong();
+            audio.play();
         }
 
         //khi prev bai
         prevBtn.onclick = function() {
             _this.prevSong();
+            _this.scrollToActiveSong();
+            audio.play();
         }
 
-        //khi bam random bai hat
+        //Xu ly random bat/tat
         randomBtn.onclick = function() {
             _this.isRandom = ! _this.isRandom;
             randomBtn.classList.toggle('active', _this.isRandom);
+            if (_this.isRandom) _this.arrayRandom.push(_this.currentIndex);
+            else _this.arrayRandom = [];
+        }
+
+        //Khi repeat sog
+        repeatBtn.onclick = function() {
+            _this.isRepeat = !_this.isRepeat;
+            repeatBtn.classList.toggle('active', _this.isRepeat);
+        }
+
+        //Xu li next song khi audio ended
+        audio.onended = function() {
+            if (!_this.isRepeat) _this.nextSong();
+            audio.play();
         }
     },
     loadCurrentSong: function() {
@@ -204,23 +222,52 @@ const app = {
         audio.src = this.currentSong.path;
     },
     nextSong: function() {
-        this.currentIndex = this.currentIndex < (this.songs.length - 1) ? this.currentIndex + 1 : 0;
-        this.loadCurrentSong();
+        if (this.isRandom) this.randomSong();
+        else {
+            this.removeActiveSong(this.currentIndex);
+            this.currentIndex = this.currentIndex < (this.songs.length - 1) ? this.currentIndex + 1 : 0;
+            this.loadCurrentSong();
+            this.activeSong(this.currentIndex);
+        }
     },
     prevSong: function() {
-        this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : (this.songs.length -1);
-        this.loadCurrentSong();
+        if (this.isRandom) this.randomSong();
+        else {
+            this.removeActiveSong(this.currentIndex);
+            this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : (this.songs.length -1);
+            this.loadCurrentSong();
+            this.activeSong(this.currentIndex);
+        }
     },
     randomSong: function() {
         let newIndex;
-        do{
+        do {
             newIndex = Math.floor(Math.random()*this.songs.length);
-        } while(newCurrentIndex === this.currentIndex)
+            this.arrayRandom.push(this.currentIndex);
+            console.log(this.arrayRandom);
+            if (this.arrayRandom.length == this.songs.length)
+                this.arrayRandom = [];
+        } while(this.arrayRandom.includes(newIndex))
         this.currentIndex = newIndex;
+        this.loadCurrentSong();
+    },
+    removeActiveSong: function(index) {
+        $(`.song.song-${index}`).classList.remove('active');
+    },
+    activeSong: function(index) {
+        $(`.song.song-${index}`).classList.add('active');
+    },
+    scrollToActiveSong: function () {
+        setTimeout(() => {
+            $('.song.active').scrollIntoView({
+                behavior: 'smooth',
+                block: 'nearest'
+            });
+        }, 300)
     },
     start: function() {
         //dinh nghia cac thuoc tinh cho object
-        this.definePropertis();
+        this.defineProperties();
         //lang nge va xu ly cac su kien
         this.handleEvent();
 
