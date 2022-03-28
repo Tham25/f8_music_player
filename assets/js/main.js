@@ -291,7 +291,7 @@ const app = {
     removeActiveSong: function() {
         $(`#song-${this.currentIndex}`).classList.remove('active');
     },
-    activeSong: function(index) {
+    activeSong: function() {
         $(`#song-${this.currentIndex}`).classList.add('active');
     },
     scrollToActiveSong: function () {
