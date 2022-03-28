@@ -15,6 +15,8 @@
 const $ = document.querySelector.bind(document);
 const $$ = document.querySelectorAll.bind(document);
 
+const PLAYER_STORAGE_KEY = 'F8_PLAYER';
+
 const heading = $('header h2');
 const cdThumb =  $('.cd-thumb');
 const audio = $('#audio');
@@ -26,7 +28,7 @@ const nextBtn = $('.btn-next');
 const prevBtn = $('.btn-prev');
 const repeatBtn = $('.btn-repeat');
 const randomBtn = $('.btn-random');
-
+const playList = $('.playlist');
 
 const app = {
     currentIndex: 0,
@@ -34,6 +36,7 @@ const app = {
     isRandom: false,
     isRepeat: false,
     arrayRandom: [],
+    config: JSON.parse(localStorage.getItem(PLAYER_STORAGE_KEY)) || {},
     songs: [
         {
             name: 'Ah Yeah',
@@ -96,10 +99,14 @@ const app = {
             image: './assets/img/velvet_le.jpg'
         }
     ],
+    setConfig: function(key, value) {
+        this.config[key] = value;
+        localStorage.setItem(PLAYER_STORAGE_KEY, JSON.stringify(this.config));
+    },
     render: function() {
         const htmls = this.songs.map((song, index) => {
             return `
-            <div class="song song-${index} ${index === this.currentIndex ? 'active':''}">
+            <div id="song-${index}" class="song${index === this.currentIndex ? ' active':''}">
                 <div class="thumb"
                     style="background-image: url('${song.image}')">
                 </div>
@@ -114,7 +121,7 @@ const app = {
             `;
         });
 
-        $('.playlist').innerHTML = htmls.join('');
+        playList.innerHTML = htmls.join('');
     },
     defineProperties: function() {
         Object.defineProperty(this,'currentSong', {
@@ -185,20 +192,19 @@ const app = {
         //khi next bai hat
         nextBtn.onclick = function() {
             _this.nextSong();
-            _this.scrollToActiveSong();
             audio.play();
         }
 
         //khi prev bai
         prevBtn.onclick = function() {
             _this.prevSong();
-            _this.scrollToActiveSong();
             audio.play();
         }
 
         //Xu ly random bat/tat
         randomBtn.onclick = function() {
             _this.isRandom = ! _this.isRandom;
+            _this.setConfig('isRandom', _this.isRandom);
             randomBtn.classList.toggle('active', _this.isRandom);
             if (_this.isRandom) _this.arrayRandom.push(_this.currentIndex);
             else _this.arrayRandom = [];
@@ -207,6 +213,7 @@ const app = {
         //Khi repeat sog
         repeatBtn.onclick = function() {
             _this.isRepeat = !_this.isRepeat;
+            _this.setConfig('isRepeat', _this.isRepeat);
             repeatBtn.classList.toggle('active', _this.isRepeat);
         }
 
@@ -215,29 +222,59 @@ const app = {
             if (!_this.isRepeat) _this.nextSong();
             audio.play();
         }
+
+        //Lang nghe hanh vi click song active
+        playList.onclick = function(e) {
+            const songNode = e.target.closest('.song:not(.active)');
+            const optionNode = e.target.closest('.option');
+            //xu li active bai hat khi click
+            if(songNode && !optionNode) {
+                //lay index
+                let stringIndex = songNode.getAttribute('id');
+                let index = Number(stringIndex.charAt(stringIndex.length - 1));
+                
+                //active bai hat
+                _this.removeActiveSong();
+                _this.currentIndex = index;
+                _this.loadCurrentSong();
+                _this.activeSong();
+                audio.play();
+            }
+
+            //Xu li khi view option
+            if (optionNode) {
+                console.log('View option');
+            }
+        }
     },
     loadCurrentSong: function() {
         heading.textContent = this.currentSong.name;
         cdThumb.style.backgroundImage = `url('${this.currentSong.image}')`;
         audio.src = this.currentSong.path;
     },
+    loadConfig: function() {
+        this.isRandom = this.config.isRandom;
+        this.isRepeat = this.config.isRepeat;
+    },
     nextSong: function() {
+        this.removeActiveSong();
         if (this.isRandom) this.randomSong();
         else {
-            this.removeActiveSong(this.currentIndex);
             this.currentIndex = this.currentIndex < (this.songs.length - 1) ? this.currentIndex + 1 : 0;
             this.loadCurrentSong();
-            this.activeSong(this.currentIndex);
         }
+        this.activeSong();
+        this.scrollToActiveSong();
     },
     prevSong: function() {
+        this.removeActiveSong();
         if (this.isRandom) this.randomSong();
         else {
-            this.removeActiveSong(this.currentIndex);
             this.currentIndex = this.currentIndex > 0 ? this.currentIndex - 1 : (this.songs.length -1);
             this.loadCurrentSong();
-            this.activeSong(this.currentIndex);
         }
+        this.activeSong();
+        this.scrollToActiveSong();
     },
     randomSong: function() {
         let newIndex;
@@ -251,21 +288,23 @@ const app = {
         this.currentIndex = newIndex;
         this.loadCurrentSong();
     },
-    removeActiveSong: function(index) {
-        $(`.song.song-${index}`).classList.remove('active');
+    removeActiveSong: function() {
+        $(`#song-${this.currentIndex}`).classList.remove('active');
     },
     activeSong: function(index) {
-        $(`.song.song-${index}`).classList.add('active');
+        $(`#song-${this.currentIndex}`).classList.add('active');
     },
     scrollToActiveSong: function () {
         setTimeout(() => {
             $('.song.active').scrollIntoView({
                 behavior: 'smooth',
-                block: 'nearest'
+                block: 'end'
             });
         }, 300)
     },
     start: function() {
+        //Gan cau hinh tu config vao ung dung
+        this.loadConfig();
         //dinh nghia cac thuoc tinh cho object
         this.defineProperties();
         //lang nge va xu ly cac su kien
@@ -275,6 +314,9 @@ const app = {
         this.loadCurrentSong();
         //Render playlist
         this.render();
+        //view trang thai ban dau cua repeat & random cho user
+        repeatBtn.classList.toggle('active', this.isRepeat);
+        randomBtn.classList.toggle('active', this.isRandom);
     }
 };
 
